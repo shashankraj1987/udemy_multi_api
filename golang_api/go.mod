@@ -1,4 +1,4 @@
-module udemy-golang-api
+module udemy-multi-api-golang
 
 go 1.24.11
 

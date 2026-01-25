@@ -2,40 +2,39 @@ package main
 
 import (
 	"net/http"
-	"udemy-golang-api/db"
-	"udemy-golang-api/models"
+	"udemy-multi-api-golang/db"
+	"udemy-multi-api-golang/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	server := gin.Default()
 
 	db.InitDb()
 
-	server := gin.Default()
-	server.GET("/events", getEvents)
-	server.POST("/events", createEvent)
-	server.Run(":8080")
+	server.GET("/events", Get_events)
+	server.POST("/events", CreateEvents)
+	server.Run(":8081")
 }
 
-func getEvents(context *gin.Context) {
-	context.JSON(http.StatusOK, models.GetAllEvents())
+func Get_events(context *gin.Context) {
+	events := models.GetAllEvents()
+	context.JSON(http.StatusOK, events)
+
 }
 
-func createEvent(context *gin.Context) {
+func CreateEvents(context *gin.Context) {
 	var event models.Event
-	err := context.ShouldBindBodyWithJSON(&event)
+	err := context.ShouldBindJSON(&event)
 	if err != nil {
 		context.JSON(http.StatusBadRequest,
-			gin.H{"message": "Could not parse the request to Json."})
+			gin.H{"message": "Could not parse the value.", "event": event})
 		return
 	}
-
 	event.ID = 1
-	event.UserID = 1
-
+	event.USerID = 1
 	event.Save()
-
-	context.JSON(http.StatusCreated, gin.H{
-		"message": "Event Created", "event": event})
+	context.JSON(http.StatusCreated, gin.H{"Message": "event Created",
+		"event": event})
 }
