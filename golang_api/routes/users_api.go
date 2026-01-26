@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func signup(context *gin.Context) {
+func sign_up(context *gin.Context) {
 	var user models.User
 	err := context.ShouldBindJSON(&user)
 	if err != nil {
@@ -24,4 +24,16 @@ func signup(context *gin.Context) {
 
 	context.JSON(http.StatusCreated, gin.H{"Message": "user Created",
 		"event": user})
+}
+
+func user_Login(context *gin.Context) {
+	var user models.User
+
+	err := context.ShouldBindJSON(&user)
+
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Could not Login.", "error": err.Error()})
+	}
+
 }

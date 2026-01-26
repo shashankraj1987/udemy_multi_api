@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"udemy-multi-api-golang/db"
+	"udemy-multi-api-golang/utils"
 )
 
 type User struct {
@@ -22,7 +23,14 @@ func (u User) Save() error {
 	}
 	defer stmt.Close()
 
-	result, err := stmt.Exec(u.Email, u.Password)
+	// Convert Password to Hashes
+	pass, err := utils.HashPassword(u.Password)
+	if err != nil {
+		fmt.Println("Error Hashing Password.")
+		return err
+	}
+
+	result, err := stmt.Exec(u.Email, pass)
 
 	if err != nil {
 		log.Println("Error Writing the Data to DB")
@@ -52,4 +60,16 @@ func (u User) Delete() (int64, error) {
 	}
 
 	return result.RowsAffected()
+}
+
+func (u User) ValidateCreds() error {
+	query := `SELECT password FROM users WHERE users = ?`
+	row := db.DB.QueryRow(query, u.Email)
+
+	var ret_pass string
+	err := row.Scan(&ret_pass)
+	if err != nil {
+		return err
+	}
+	isValid := utils.CheckPassword(u.Password, ret_pass)
 }
