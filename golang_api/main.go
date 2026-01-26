@@ -1,40 +1,24 @@
 package main
 
 import (
-	"net/http"
+	"fmt"
 	"udemy-multi-api-golang/db"
 	"udemy-multi-api-golang/models"
+	"udemy-multi-api-golang/routes"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	server := gin.Default()
-
+	server.SetTrustedProxies([]string{"0.0.0.0"})
 	db.InitDb()
 
-	server.GET("/events", Get_events)
-	server.POST("/events", CreateEvents)
-	server.Run(":8081")
-}
-
-func Get_events(context *gin.Context) {
-	events := models.GetAllEvents()
-	context.JSON(http.StatusOK, events)
-
-}
-
-func CreateEvents(context *gin.Context) {
-	var event models.Event
-	err := context.ShouldBindJSON(&event)
-	if err != nil {
-		context.JSON(http.StatusBadRequest,
-			gin.H{"message": "Could not parse the value.", "event": event})
-		return
+	fmt.Println("Available models:")
+	for _, model := range models.GetModels() {
+		fmt.Printf("- %T\n", model)
 	}
-	event.ID = 1
-	event.USerID = 1
-	event.Save()
-	context.JSON(http.StatusCreated, gin.H{"Message": "event Created",
-		"event": event})
+
+	routes.RegisterRoutes(server)
+	server.Run(":8081")
 }
