@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"udemy-multi-api-golang/db"
@@ -72,4 +73,9 @@ func (u User) ValidateCreds() error {
 		return err
 	}
 	isValid := utils.CheckPassword(u.Password, ret_pass)
+	if !isValid {
+		return errors.New("Credentials invalid")
+	}
+
+	return nil
 }
