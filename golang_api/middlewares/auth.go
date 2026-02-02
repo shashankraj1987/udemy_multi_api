@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"net/http"
+	"udemy-multi-api-golang/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,9 +16,10 @@ func Authenticate(c *gin.Context) {
 		return
 	}
 
-	userId, err := utils.verifyToken(token)
+	userId, err := utils.VerifyToken(token)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized"})
+		return
 	}
 
 	c.Set("UId", userId)

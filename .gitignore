@@ -168,3 +168,4 @@ tmp/
 temp/
 *.tmp
 *.db
+*dummy_users*

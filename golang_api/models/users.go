@@ -64,17 +64,19 @@ func (u User) Delete() (int64, error) {
 }
 
 func (u User) ValidateCreds() error {
-	query := `SELECT password FROM users WHERE users = ?`
+	query := `SELECT id, password FROM users WHERE email = ?`
 	row := db.DB.QueryRow(query, u.Email)
 
 	var ret_pass string
-	err := row.Scan(&ret_pass)
+	err := row.Scan(&u.ID, &ret_pass)
+
 	if err != nil {
-		return err
+		return errors.New("USer Doesn't exist.")
 	}
+
 	isValid := utils.CheckPassword(u.Password, ret_pass)
 	if !isValid {
-		return errors.New("Credentials invalid")
+		return errors.New("Invalid Password")
 	}
 
 	return nil

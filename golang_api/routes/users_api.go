@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 	"udemy-multi-api-golang/models"
+	"udemy-multi-api-golang/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,7 +34,24 @@ func user_Login(context *gin.Context) {
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Could not Login.", "error": err.Error()})
+			"message": "Could not Parse request data.", "error": err.Error()})
+		return
 	}
+
+	err = user.ValidateCreds()
+	if err != nil {
+		context.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Could not Login.", "error": err.Error()})
+		return
+	}
+
+	token, err := utils.GenerateToken(user.Email, user.ID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not authenticate the user",
+			"error": err.Error()})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"message": "Login Successful", "token": token})
 
 }
