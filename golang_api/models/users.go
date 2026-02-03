@@ -14,7 +14,7 @@ type User struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func (u User) Save() error {
+func (u *User) Save() error {
 	query := `INSERT INTO users(email, password)
 		VALUES(?,?)`
 
@@ -63,7 +63,7 @@ func (u User) Delete() (int64, error) {
 	return result.RowsAffected()
 }
 
-func (u User) ValidateCreds() error {
+func (u *User) ValidateCreds() error {
 	query := `SELECT id, password FROM users WHERE email = ?`
 	row := db.DB.QueryRow(query, u.Email)
 

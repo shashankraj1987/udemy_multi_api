@@ -13,10 +13,10 @@ type Event struct {
 	Description string    `json:"description" binding:"required"`
 	Location    string    `json:"location" binding:"required"`
 	DateTime    time.Time `json:"dateTime" binding:"required"`
-	USerID      int       `json:"userId"`
+	UserID      int64     `json:"userId"`
 }
 
-func (e Event) Save() error {
+func (e *Event) Save() error {
 	// events = append(events, e)
 	query := `INSERT INTO events(name, description, location, dateTime, user_id)
 		VALUES(?,?,?,?,?)
@@ -28,7 +28,7 @@ func (e Event) Save() error {
 	defer stmt.Close()
 
 	result, err := stmt.Exec(e.Name, e.Description, e.Location,
-		e.DateTime, e.USerID)
+		e.DateTime, e.UserID)
 
 	if err != nil {
 		log.Println("Error Writing the Data to DB")
@@ -53,7 +53,7 @@ func GetAll() ([]Event, error) {
 	for res.Next() {
 		var event Event
 		err := res.Scan(&event.ID, &event.Name, &event.Description,
-			&event.Location, &event.DateTime, &event.USerID)
+			&event.Location, &event.DateTime, &event.UserID)
 
 		if err != nil {
 			fmt.Println("Error reading data")
@@ -71,7 +71,7 @@ func GetId(id int64) (*Event, error) {
 
 	var event Event
 	err := row.Scan(&event.ID, &event.Name, &event.Description,
-		&event.Location, &event.DateTime, &event.USerID)
+		&event.Location, &event.DateTime, &event.UserID)
 	if err != nil {
 		fmt.Println("Error reading data")
 		return nil, err

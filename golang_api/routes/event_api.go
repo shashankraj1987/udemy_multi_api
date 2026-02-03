@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 	"udemy-multi-api-golang/models"
-	"udemy-multi-api-golang/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,36 +21,18 @@ func Get_events(context *gin.Context) {
 
 func CreateEvents(context *gin.Context) {
 
-	var err error
-
-	// Validate tokens via Auth Headers.
-	token := context.Request.Header.Get("Authorization")
-
-	if token == "" {
-		context.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized",
-			"error": "Empty Auth Token."})
-		return
-	}
-
-	// Check the token to see if it is valid.
-
-	userId, err := utils.VerifyToken(token)
-	if err != nil {
-		context.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized",
-			"error": err.Error()})
-		return
-	}
-
 	// If Valid, accept the token and move forward.
 	var event models.Event
-	err = context.ShouldBindJSON(&event)
+	err := context.ShouldBindJSON(&event)
 	if err != nil {
 		context.JSON(http.StatusBadRequest,
 			gin.H{"message": "Could not parse the value.", "event": event})
 		return
 	}
-	// event.ID = 1
-	event.USerID = int(userId)
+
+	// Set the user Id coming from the Middleware
+
+	event.UserID = context.GetInt64("UId")
 	err = event.Save()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{
