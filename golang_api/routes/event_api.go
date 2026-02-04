@@ -67,10 +67,17 @@ func UpdateEvents(context *gin.Context) {
 		return
 	}
 
-	_, err = models.GetId(event_id)
+	event, err := models.GetId(event_id)
+
 	if err != nil {
 		context.JSON(http.StatusInternalServerError,
 			gin.H{"message": "Unable to get event", "error": err.Error()})
+	}
+
+	// Check if the event belongs to the owner.
+	if event.UserID != context.GetInt64("UId") {
+		context.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized to update event."})
+		return
 	}
 
 	var updatedEvent models.Event
