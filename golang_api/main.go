@@ -6,9 +6,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"udemy-multi-api-golang/config"
 	"udemy-multi-api-golang/db"
+	docs "udemy-multi-api-golang/docs"
 	"udemy-multi-api-golang/pkg/logger"
 	"udemy-multi-api-golang/routes"
 	"udemy-multi-api-golang/utils"
@@ -21,10 +24,21 @@ func init() {
 	}
 }
 
+// @title Event Registration API
+// @version 1.0
+// @description Simple API for managing events and registrations.
+// @BasePath /
+// @schemes http
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 // main initializes the application and starts the HTTP server.
 func main() {
 	// Load configuration
 	cfg := config.Load()
+
+	docs.SwaggerInfo.BasePath = "/"
+	docs.SwaggerInfo.Schemes = []string{"http"}
 
 	// Initialize logger
 	appLogger := logger.New(cfg.Logging.Level)
@@ -46,6 +60,9 @@ func main() {
 
 	// Set up trusted proxies
 	engine.SetTrustedProxies([]string{"0.0.0.0"})
+
+	// Serve Swagger UI
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Register API routes
 	routes.RegisterRoutes(engine, db.Client, appLogger)

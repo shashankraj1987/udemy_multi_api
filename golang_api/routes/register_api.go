@@ -12,7 +12,18 @@ import (
 )
 
 // HandleRegisterEvent registers a user for an event.
-// POST /api/events/:id/registrations
+// @Summary Register for event
+// @Description Register the authenticated user for the target event.
+// @Tags Registrations
+// @Produce json
+// @Param id path int true "Event ID"
+// @Security BearerAuth
+// @Success 201 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /api/events/{id}/registrations [post]
 func HandleRegisterEvent(
 	eventRepo repository.EventRepository,
 	regRepo repository.RegistrationRepository,
@@ -68,7 +79,18 @@ func HandleRegisterEvent(
 }
 
 // HandleUnregisterEvent unregisters a user from an event.
-// DELETE /api/events/:id/registrations
+// @Summary Unregister from event
+// @Description Remove the authenticated user from the event registration list.
+// @Tags Registrations
+// @Produce json
+// @Param id path int true "Event ID"
+// @Security BearerAuth
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /api/events/{id}/registrations [delete]
 func HandleUnregisterEvent(regRepo repository.RegistrationRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		eventID, err := strconv.ParseInt(c.Param("id"), 10, 64)

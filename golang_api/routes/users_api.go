@@ -12,7 +12,16 @@ import (
 )
 
 // HandleSignUp handles user account creation.
-// POST /auth/signup
+// @Summary User signup
+// @Description Create a new user account with email and password.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param payload body models.SignupRequest true "Signup request"
+// @Success 201 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /auth/signup [post]
 func HandleSignUp(userRepo repository.UserRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.SignupRequest
@@ -60,7 +69,17 @@ func HandleSignUp(userRepo repository.UserRepository, log logger.Logger) gin.Han
 }
 
 // HandleLogin handles user authentication.
-// POST /auth/login
+// @Summary User login
+// @Description Authenticate a user and receive a JWT token.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param payload body models.LoginRequest true "Login request"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /auth/login [post]
 func HandleLogin(userRepo repository.UserRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.LoginRequest

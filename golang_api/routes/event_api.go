@@ -13,7 +13,15 @@ import (
 )
 
 // HandleGetEvents retrieves all events.
-// GET /api/events
+// @Summary List events
+// @Description Retrieve all available events.
+// @Tags Events
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /api/events [get]
 func HandleGetEvents(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		events, err := eventRepo.GetAll()
@@ -28,7 +36,18 @@ func HandleGetEvents(eventRepo repository.EventRepository, log logger.Logger) gi
 }
 
 // HandleCreateEvent creates a new event.
-// POST /api/events
+// @Summary Create event
+// @Description Create a new event owned by the authenticated user.
+// @Tags Events
+// @Accept json
+// @Produce json
+// @Param payload body models.CreateEventRequest true "Event payload"
+// @Security BearerAuth
+// @Success 201 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /api/events [post]
 func HandleCreateEvent(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.CreateEventRequest
@@ -67,7 +86,18 @@ func HandleCreateEvent(eventRepo repository.EventRepository, log logger.Logger) 
 }
 
 // HandleGetEventByID retrieves a specific event by ID.
-// GET /api/events/:id
+// @Summary Get event
+// @Description Retrieve event details by ID.
+// @Tags Events
+// @Produce json
+// @Param id path int true "Event ID"
+// @Security BearerAuth
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /api/events/{id} [get]
 func HandleGetEventByID(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		eventID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -88,7 +118,21 @@ func HandleGetEventByID(eventRepo repository.EventRepository, log logger.Logger)
 }
 
 // HandleUpdateEvent updates an existing event.
-// PUT /api/events/:id
+// @Summary Update event
+// @Description Update an event owned by the authenticated user.
+// @Tags Events
+// @Accept json
+// @Produce json
+// @Param id path int true "Event ID"
+// @Param payload body models.UpdateEventRequest true "Event payload"
+// @Security BearerAuth
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 403 {object} response.Response
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /api/events/{id} [put]
 func HandleUpdateEvent(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		eventID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -142,7 +186,19 @@ func HandleUpdateEvent(eventRepo repository.EventRepository, log logger.Logger) 
 }
 
 // HandleDeleteEvent deletes an event.
-// DELETE /api/events/:id
+// @Summary Delete event
+// @Description Delete an event owned by the authenticated user.
+// @Tags Events
+// @Produce json
+// @Param id path int true "Event ID"
+// @Security BearerAuth
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 403 {object} response.Response
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /api/events/{id} [delete]
 func HandleDeleteEvent(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		eventID, err := strconv.ParseInt(c.Param("id"), 10, 64)
