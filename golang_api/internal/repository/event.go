@@ -1,166 +1,48 @@
 package repository
-// Package repository provides data access implementations for events.
-package repository
 
 import (
-	"database/sql"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	return events, rows.Err()	}		events = append(events, event)		}			"userId":      ownerID,			"dateTime":    dateTime,			"location":    location,			"description": description,			"name":        name,			"id":          id,		event := map[string]interface{}{		}			return nil, err		if err != nil {		err := rows.Scan(&id, &name, &description, &location, &dateTime, &ownerID)		var ownerID int64		var name, description, location, dateTime string		var id int64	for rows.Next() {	var events []map[string]interface{}	defer rows.Close()	}		return nil, err	if err != nil {	rows, err := er.db.Query(query, userID)	query := `SELECT id, name, description, location, dateTime, user_id FROM events WHERE user_id = ?`func (er *EventRepositoryImpl) GetByUserID(userID int64) ([]map[string]interface{}, error) {// GetByUserID retrieves all events created by a specific user.}	return result.RowsAffected()	}		return 0, err	if err != nil {	result, err := stmt.Exec(id)	defer stmt.Close()	}		return 0, err	if err != nil {	stmt, err := er.db.Prepare(query)	query := `DELETE FROM events WHERE id = ?`func (er *EventRepositoryImpl) Delete(id int64) (int64, error) {// Delete deletes an event from the database.}	return err	_, err = stmt.Exec(name, description, location, dateTime, id)	defer stmt.Close()	}		return err	if err != nil {	stmt, err := er.db.Prepare(query)	query := `UPDATE events SET name = ?, description = ?, location = ?, dateTime = ? WHERE id = ?`func (er *EventRepositoryImpl) Update(id int64, name, description, location, dateTime string) error {// Update updates an event in the database.}	return event, nil	}		"userId":      userID,		"dateTime":    dateTime,		"location":    location,		"description": description,		"name":        name,		"id":          eventID,	event := map[string]interface{}{	}		return nil, err	if err != nil {	err := row.Scan(&eventID, &name, &description, &location, &dateTime, &userID)	var userID int64	var name, description, location, dateTime string	var eventID int64	row := er.db.QueryRow(query, id)	query := `SELECT id, name, description, location, dateTime, user_id FROM events WHERE id = ?`func (er *EventRepositoryImpl) GetByID(id int64) (map[string]interface{}, error) {// GetByID retrieves a single event by ID.}	return events, rows.Err()	}		events = append(events, event)		}			"userId":      userID,			"dateTime":    dateTime,			"location":    location,			"description": description,			"name":        name,			"id":          id,		event := map[string]interface{}{		}			return nil, err		if err != nil {		err := rows.Scan(&id, &name, &description, &location, &dateTime, &userID)		var userID int64		var name, description, location, dateTime string		var id int64	for rows.Next() {	var events []map[string]interface{}	defer rows.Close()	}		return nil, err	if err != nil {	rows, err := er.db.Query(query)	query := `SELECT id, name, description, location, dateTime, user_id FROM events`func (er *EventRepositoryImpl) GetAll() ([]map[string]interface{}, error) {// GetAll retrieves all events from the database.}	return result.LastInsertId()	}		return 0, err	if err != nil {	result, err := stmt.Exec(name, description, location, dateTime, userID)	defer stmt.Close()	}		return 0, err	if err != nil {	stmt, err := er.db.Prepare(query)	query := `INSERT INTO events(name, description, location, dateTime, user_id) VALUES(?, ?, ?, ?, ?)`func (er *EventRepositoryImpl) Create(name, description, location, dateTime string, userID int64) (int64, error) {// Create creates a new event in the database.}	}		BaseRepository: NewBaseRepository(db),	return &EventRepositoryImpl{func NewEventRepository(db *sql.DB) EventRepository {// NewEventRepository creates a new event repository instance.}	*BaseRepositorytype EventRepositoryImpl struct {// EventRepositoryImpl implements EventRepository interface.)
+	"udemy-multi-api-golang/models"
+
+	"gorm.io/gorm"
+)
+
+// EventRepositoryImpl implements EventRepository using GORM.
+type EventRepositoryImpl struct {
+	*BaseRepository
+}
+
+// NewEventRepository creates a new EventRepository instance.
+func NewEventRepository(db *gorm.DB) EventRepository {
+	return &EventRepositoryImpl{BaseRepository: NewBaseRepository(db)}
+}
+
+// Create persists a new event.
+func (er *EventRepositoryImpl) Create(event *models.Event) error {
+	return er.DB().Create(event).Error
+}
+
+// GetAll returns all events ordered by date.
+func (er *EventRepositoryImpl) GetAll() ([]models.Event, error) {
+	var events []models.Event
+	err := er.DB().Order("dateTime asc").Find(&events).Error
+	return events, err
+}
+
+// GetByID fetches an event by its primary key.
+func (er *EventRepositoryImpl) GetByID(id int64) (*models.Event, error) {
+	var event models.Event
+	if err := er.DB().First(&event, id).Error; err != nil {
+		return nil, err
+	}
+	return &event, nil
+}
+
+// Update saves the provided event.
+func (er *EventRepositoryImpl) Update(event *models.Event) error {
+	return er.DB().Save(event).Error
+}
+
+// Delete removes an event by ID.
+func (er *EventRepositoryImpl) Delete(id int64) error {
+	return er.DB().Delete(&models.Event{}, id).Error
+}

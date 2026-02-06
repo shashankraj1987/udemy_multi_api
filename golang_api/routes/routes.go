@@ -2,17 +2,16 @@
 package routes
 
 import (
-	"database/sql"
-
 	"udemy-multi-api-golang/internal/repository"
 	"udemy-multi-api-golang/middlewares"
 	"udemy-multi-api-golang/pkg/logger"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // RegisterRoutes registers all API routes with the Gin engine.
-func RegisterRoutes(engine *gin.Engine, db *sql.DB, log logger.Logger) {
+func RegisterRoutes(engine *gin.Engine, db *gorm.DB, log logger.Logger) {
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	eventRepo := repository.NewEventRepository(db)

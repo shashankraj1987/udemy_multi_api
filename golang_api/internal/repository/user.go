@@ -1,82 +1,51 @@
 package repository
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	return count > 0, nil	}		return false, err	if err != nil {	err := row.Scan(&count)	var count int	row := ur.db.QueryRow(query, email)	query := `SELECT COUNT(*) FROM users WHERE email = ?`func (ur *UserRepositoryImpl) Exists(email string) (bool, error) {// Exists checks if a user with the given email exists.}	return err	_, err = stmt.Exec(id)	defer stmt.Close()	}		return err	if err != nil {	stmt, err := ur.db.Prepare(query)	query := `DELETE FROM users WHERE id = ?`func (ur *UserRepositoryImpl) Delete(id int64) error {// Delete deletes a user from the database.}	return userID, passwordHash, nil	}		return 0, "", err	if err != nil {	err := row.Scan(&userID, &passwordHash)	var passwordHash string	var userID int64	row := ur.db.QueryRow(query, email)	query := `SELECT id, password FROM users WHERE email = ?`func (ur *UserRepositoryImpl) GetByEmail(email string) (int64, string, error) {// GetByEmail retrieves user credentials by email.}	return result.LastInsertId()	}		return 0, err	if err != nil {	result, err := stmt.Exec(email, passwordHash)	defer stmt.Close()	}		return 0, err	if err != nil {	stmt, err := ur.db.Prepare(query)	query := `INSERT INTO users(email, password) VALUES(?, ?)`func (ur *UserRepositoryImpl) Create(email, passwordHash string) (int64, error) {// Create creates a new user in the database.}	}		BaseRepository: NewBaseRepository(db),	return &UserRepositoryImpl{func NewUserRepository(db *sql.DB) UserRepository {// NewUserRepository creates a new user repository instance.}	*BaseRepositorytype UserRepositoryImpl struct {// UserRepositoryImpl implements UserRepository interface.)	"database/sql"import (package repository// Package repository provides data access implementations for users.
+import (
+	"udemy-multi-api-golang/models"
+
+	"gorm.io/gorm"
+)
+
+// UserRepositoryImpl implements UserRepository using GORM.
+type UserRepositoryImpl struct {
+	*BaseRepository
+}
+
+// NewUserRepository creates a new UserRepository instance.
+func NewUserRepository(db *gorm.DB) UserRepository {
+	return &UserRepositoryImpl{
+		BaseRepository: NewBaseRepository(db),
+	}
+}
+
+// Create inserts a new user record.
+func (ur *UserRepositoryImpl) Create(email, passwordHash string) (int64, error) {
+	user := &models.User{Email: email, Password: passwordHash}
+	if err := ur.DB().Create(user).Error; err != nil {
+		return 0, err
+	}
+	return user.ID, nil
+}
+
+// GetByEmail returns the user's ID and hashed password for a given email.
+func (ur *UserRepositoryImpl) GetByEmail(email string) (int64, string, error) {
+	var user models.User
+	if err := ur.DB().Where("email = ?", email).First(&user).Error; err != nil {
+		return 0, "", err
+	}
+	return user.ID, user.Password, nil
+}
+
+// Delete removes a user by ID.
+func (ur *UserRepositoryImpl) Delete(id int64) error {
+	return ur.DB().Delete(&models.User{}, id).Error
+}
+
+// Exists checks whether a user with the given email already exists.
+func (ur *UserRepositoryImpl) Exists(email string) (bool, error) {
+	var count int64
+	if err := ur.DB().Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

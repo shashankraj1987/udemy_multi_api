@@ -45,22 +45,23 @@ func HandleCreateEvent(eventRepo repository.EventRepository, log logger.Logger) 
 			return
 		}
 
-		eventID, err := eventRepo.Create(
-			req.Name,
-			req.Description,
-			req.Location,
-			req.DateTime.String(),
-			userID.(int64),
-		)
-		if err != nil {
+		event := &models.Event{
+			Name:        req.Name,
+			Description: req.Description,
+			Location:    req.Location,
+			DateTime:    req.DateTime,
+			UserID:      userID.(int64),
+		}
+
+		if err := eventRepo.Create(event); err != nil {
 			log.Error("failed to create event", err)
 			response.InternalServerError(c, "failed to create event", err.Error())
 			return
 		}
 
 		response.Created(c, "event created successfully", gin.H{
-			"id":   eventID,
-			"name": req.Name,
+			"id":   event.ID,
+			"name": event.Name,
 		})
 	}
 }
@@ -119,14 +120,18 @@ func HandleUpdateEvent(eventRepo repository.EventRepository, log logger.Logger) 
 		}
 
 		// Check if the user owns the event
-		if event["userId"].(int64) != userID.(int64) {
+		if event.UserID != userID.(int64) {
 			response.Forbidden(c, "you do not have permission to update this event")
 			return
 		}
 
 		// Update the event
-		err = eventRepo.Update(eventID, req.Name, req.Description, req.Location, req.DateTime.String())
-		if err != nil {
+		event.Name = req.Name
+		event.Description = req.Description
+		event.Location = req.Location
+		event.DateTime = req.DateTime
+
+		if err := eventRepo.Update(event); err != nil {
 			log.Error("failed to update event", err)
 			response.InternalServerError(c, "failed to update event", err.Error())
 			return
@@ -161,22 +166,20 @@ func HandleDeleteEvent(eventRepo repository.EventRepository, log logger.Logger) 
 		}
 
 		// Check if the user owns the event
-		if event["userId"].(int64) != userID.(int64) {
+		if event.UserID != userID.(int64) {
 			response.Forbidden(c, "you do not have permission to delete this event")
 			return
 		}
 
 		// Delete the event
-		rowsAffected, err := eventRepo.Delete(eventID)
-		if err != nil {
+		if err := eventRepo.Delete(eventID); err != nil {
 			log.Error("failed to delete event", err)
 			response.InternalServerError(c, "failed to delete event", err.Error())
 			return
 		}
 
 		response.OK(c, "event deleted successfully", gin.H{
-			"id":            eventID,
-			"rows_affected": rowsAffected,
+			"id": eventID,
 		})
 	}
 }

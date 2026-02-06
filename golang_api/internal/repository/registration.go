@@ -1,83 +1,39 @@
 package repository
-// Package repository provides data access implementations for event registrations.
-package repository
 
 import (
-	"database/sql"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	return count > 0, nil	}		return false, err	if err != nil {	err := row.Scan(&count)	var count int	row := rr.db.QueryRow(query, eventID, userID)	query := `SELECT COUNT(*) FROM registrations WHERE event_id = ? AND user_id = ?`func (rr *RegistrationRepositoryImpl) IsRegistered(eventID, userID int64) (bool, error) {// IsRegistered checks if a user is registered for an event.}	return eventIDs, rows.Err()	}		eventIDs = append(eventIDs, eventID)		}			return nil, err		if err != nil {		err := rows.Scan(&eventID)		var eventID int64	for rows.Next() {	var eventIDs []int64	defer rows.Close()	}		return nil, err	if err != nil {	rows, err := rr.db.Query(query, userID)	query := `SELECT event_id FROM registrations WHERE user_id = ?`func (rr *RegistrationRepositoryImpl) GetUserRegistrations(userID int64) ([]int64, error) {// GetUserRegistrations retrieves all events a user is registered for.}	return err	_, err = stmt.Exec(eventID, userID)	defer stmt.Close()	}		return err	if err != nil {	stmt, err := rr.db.Prepare(query)	query := `DELETE FROM registrations WHERE event_id = ? AND user_id = ?`func (rr *RegistrationRepositoryImpl) Unregister(eventID, userID int64) error {// Unregister removes a user's registration from an event.}	return err	_, err = stmt.Exec(eventID, userID)	defer stmt.Close()	}		return err	if err != nil {	stmt, err := rr.db.Prepare(query)	query := `INSERT INTO registrations(event_id, user_id) VALUES(?, ?)`func (rr *RegistrationRepositoryImpl) Register(eventID, userID int64) error {// Register registers a user for an event.}	}		BaseRepository: NewBaseRepository(db),	return &RegistrationRepositoryImpl{func NewRegistrationRepository(db *sql.DB) RegistrationRepository {// NewRegistrationRepository creates a new registration repository instance.}	*BaseRepositorytype RegistrationRepositoryImpl struct {// RegistrationRepositoryImpl implements RegistrationRepository interface.)
+	"udemy-multi-api-golang/models"
+
+	"gorm.io/gorm"
+)
+
+// RegistrationRepositoryImpl implements RegistrationRepository using GORM.
+type RegistrationRepositoryImpl struct {
+	*BaseRepository
+}
+
+// NewRegistrationRepository creates a new RegistrationRepository.
+func NewRegistrationRepository(db *gorm.DB) RegistrationRepository {
+	return &RegistrationRepositoryImpl{BaseRepository: NewBaseRepository(db)}
+}
+
+// Register stores a new registration record.
+func (rr *RegistrationRepositoryImpl) Register(eventID, userID int64) error {
+	registration := &models.Registration{EventID: eventID, UserID: userID}
+	return rr.DB().Create(registration).Error
+}
+
+// Unregister removes an existing registration record.
+func (rr *RegistrationRepositoryImpl) Unregister(eventID, userID int64) error {
+	return rr.DB().Where("event_id = ? AND user_id = ?", eventID, userID).
+		Delete(&models.Registration{}).Error
+}
+
+// IsRegistered reports whether a registration exists for the given event/user pair.
+func (rr *RegistrationRepositoryImpl) IsRegistered(eventID, userID int64) (bool, error) {
+	var count int64
+	if err := rr.DB().Model(&models.Registration{}).
+		Where("event_id = ? AND user_id = ?", eventID, userID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

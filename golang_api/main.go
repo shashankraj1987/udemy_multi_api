@@ -48,7 +48,7 @@ func main() {
 	engine.SetTrustedProxies([]string{"0.0.0.0"})
 
 	// Register API routes
-	routes.RegisterRoutes(engine, db.DB, appLogger)
+	routes.RegisterRoutes(engine, db.Client, appLogger)
 
 	// Health check endpoint
 	engine.GET("/health", func(c *gin.Context) {

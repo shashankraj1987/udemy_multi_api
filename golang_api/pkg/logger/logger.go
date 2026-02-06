@@ -1,6 +1,4 @@
-package logger
-// Package logger provides structured logging for the application.
-// It centralizes all logging concerns with consistent formatting.
+// Package logger provides structured logging utilities.
 package logger
 
 import (
@@ -8,64 +6,63 @@ import (
 	"os"
 )
 
-// Logger defines the logging interface.
+// Logger defines the logging interface used across the app.
 type Logger interface {
-	Info(message string, errorMsg ...string)
+	Info(message string, details ...string)
 	Error(message string, err error)
-	Warn(message string, errorMsg ...string)
-	Debug(message string, errorMsg ...string)
+	Warn(message string, details ...string)
+	Debug(message string, details ...string)
 }
 
-// DefaultLogger is the default logger implementation.
+// DefaultLogger is a simple log.Logger-backed implementation.
 type DefaultLogger struct {
 	logger *log.Logger
 	level  string
 }
 
-// New creates a new logger instance with the specified level.
+// New returns a DefaultLogger with the provided log level.
 func New(level string) Logger {
+	return &DefaultLogger{
+		logger: log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile),
+		level:  level,
+	}
+}
 
+// Info logs informational messages.
+func (l *DefaultLogger) Info(message string, details ...string) {
+	msg := "[INFO] " + message
+	if len(details) > 0 {
+		msg += " - " + details[0]
+	}
+	l.logger.Println(msg)
+}
 
+// Error logs errors with optional error details.
+func (l *DefaultLogger) Error(message string, err error) {
+	if err != nil {
+		l.logger.Printf("[ERROR] %s - %v\n", message, err)
+		return
+	}
+	l.logger.Printf("[ERROR] %s\n", message)
+}
 
+// Warn logs warning messages.
+func (l *DefaultLogger) Warn(message string, details ...string) {
+	msg := "[WARN] " + message
+	if len(details) > 0 {
+		msg += " - " + details[0]
+	}
+	l.logger.Println(msg)
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	l.logger.Println(msg)	}		msg += " - " + errorMsg[0]	if len(errorMsg) > 0 {	msg := "[DEBUG] " + message	}		return	if l.level != "debug" {func (l *DefaultLogger) Debug(message string, errorMsg ...string) {// Debug logs a debug level message (only if level is debug).}	l.logger.Println(msg)	}		msg += " - " + errorMsg[0]	if len(errorMsg) > 0 {	msg := "[WARN] " + messagefunc (l *DefaultLogger) Warn(message string, errorMsg ...string) {// Warn logs a warning level message.}	}		l.logger.Printf("[ERROR] %s\n", message)	} else {		l.logger.Printf("[ERROR] %s - %v\n", message, err)	if err != nil {func (l *DefaultLogger) Error(message string, err error) {// Error logs an error level message with error details.}	l.logger.Println(msg)	}		msg += " - " + errorMsg[0]	if len(errorMsg) > 0 {	msg := "[INFO] " + messagefunc (l *DefaultLogger) Info(message string, errorMsg ...string) {// Info logs an info level message.}	}		level:  level,		logger: log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile),	return &DefaultLogger{
+// Debug logs debug messages if the logger is configured for it.
+func (l *DefaultLogger) Debug(message string, details ...string) {
+	if l.level != "debug" {
+		return
+	}
+	msg := "[DEBUG] " + message
+	if len(details) > 0 {
+		msg += " - " + details[0]
+	}
+	l.logger.Println(msg)
+}

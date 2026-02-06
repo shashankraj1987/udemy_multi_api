@@ -2,103 +2,59 @@
 package db
 
 import (
-	"database/sql"
 	"log"
-	"udemy-multi-api-golang/config"
+	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	"udemy-multi-api-golang/config"
+	"udemy-multi-api-golang/models"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
-var DB *sql.DB
+// Client is the global GORM database handle.
+var Client *gorm.DB
 
-// InitDB initializes the database connection and creates necessary tables.
+// InitDB initializes the database connection using GORM and runs migrations.
 func InitDB(cfg *config.Config) error {
-	var err error
-	DB, err = sql.Open("sqlite3", cfg.Database.Path)
+	database, err := gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{
+		Logger: gormLogger.Default.LogMode(gormLogger.Silent),
+	})
 	if err != nil {
 		log.Printf("failed to connect to database: %v\n", err)
 		return err
 	}
 
-	// Set connection pool settings
-	DB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
-	DB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
-
-	// Test the connection
-	err = DB.Ping()
+	sqlDB, err := database.DB()
 	if err != nil {
-		log.Printf("failed to ping database: %v\n", err)
 		return err
 	}
 
+	sqlDB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.Database.MaxConnLifetime) * time.Second)
+
+	if err := database.AutoMigrate(&models.User{}, &models.Event{}, &models.Registration{}); err != nil {
+		log.Printf("failed to run database migrations: %v\n", err)
+		return err
+	}
+
+	Client = database
 	log.Printf("database connected successfully: %s\n", cfg.Database.Path)
+	return nil
+}
 
-	if err := createTables(); err != nil {
+// CloseDB closes the underlying database connection.
+func CloseDB() error {
+	if Client == nil {
+		return nil
+	}
+
+	sqlDB, err := Client.DB()
+	if err != nil {
 		return err
 	}
 
-	return nil
+	return sqlDB.Close()
 }
-
-// CloseDB closes the database connection.
-func CloseDB() error {
-	if DB != nil {
-		return DB.Close()
-	}
-	return nil
-}
-
-// createTables creates all necessary database tables if they don't exist.
-func createTables() error {
-	tables := []string{
-		createUsersTable,
-		createEventsTable,
-		createRegistrationsTable,
-	}
-
-	for _, query := range tables {
-		if _, err := DB.Exec(query); err != nil {
-			log.Printf("failed to create table: %v\n", err)
-			return err
-		}
-	}
-
-	log.Println("all tables created/verified successfully")
-	return nil
-}
-
-const (
-	// createUsersTable defines the users table schema.
-	createUsersTable = `
-		CREATE TABLE IF NOT EXISTS users(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			email TEXT NOT NULL UNIQUE,
-			password TEXT NOT NULL
-		)
-	`
-
-	// createEventsTable defines the events table schema.
-	createEventsTable = `
-		CREATE TABLE IF NOT EXISTS events(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			description TEXT NOT NULL,
-			location TEXT NOT NULL,
-			dateTime DATETIME NOT NULL,
-			user_id INTEGER NOT NULL,
-			FOREIGN KEY(user_id) REFERENCES users(id)
-		)
-	`
-
-	// createRegistrationsTable defines the registrations table schema.
-	createRegistrationsTable = `
-		CREATE TABLE IF NOT EXISTS registrations(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			event_id INTEGER NOT NULL,
-			user_id INTEGER NOT NULL,
-			FOREIGN KEY(event_id) REFERENCES events(id),
-			FOREIGN KEY(user_id) REFERENCES users(id),
-			UNIQUE(event_id, user_id)
-		)
-	`
-)

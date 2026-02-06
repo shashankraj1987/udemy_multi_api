@@ -1,48 +1,47 @@
-package repository
 // Package repository provides data access abstractions for the application.
+package repository
 
+import (
+	"udemy-multi-api-golang/models"
 
+	"gorm.io/gorm"
+)
 
+// UserRepository defines operations for managing users.
+type UserRepository interface {
+	Create(email, passwordHash string) (int64, error)
+	GetByEmail(email string) (int64, string, error)
+	Delete(id int64) error
+	Exists(email string) (bool, error)
+}
 
+// EventRepository defines operations for managing events.
+type EventRepository interface {
+	Create(event *models.Event) error
+	GetAll() ([]models.Event, error)
+	GetByID(id int64) (*models.Event, error)
+	Update(event *models.Event) error
+	Delete(id int64) error
+}
 
+// RegistrationRepository defines operations for event registrations.
+type RegistrationRepository interface {
+	Register(eventID, userID int64) error
+	Unregister(eventID, userID int64) error
+	IsRegistered(eventID, userID int64) (bool, error)
+}
 
+// BaseRepository provides access to the shared *gorm.DB instance.
+type BaseRepository struct {
+	db *gorm.DB
+}
 
+// NewBaseRepository constructs a BaseRepository.
+func NewBaseRepository(db *gorm.DB) *BaseRepository {
+	return &BaseRepository{db: db}
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	return br.dbfunc (br *BaseRepository) DB() *sql.DB {// DB returns the database connection.}	return &BaseRepository{db: db}func NewBaseRepository(db *sql.DB) *BaseRepository {// NewBaseRepository creates a new base repository instance.}	db *sql.DBtype BaseRepository struct {// BaseRepository provides common functionality for all repositories.}	IsRegistered(eventID, userID int64) (bool, error)	GetUserRegistrations(userID int64) ([]int64, error)	Unregister(eventID, userID int64) error	Register(eventID, userID int64) errortype RegistrationRepository interface {// RegistrationRepository defines the interface for event registration data access operations.}	GetByUserID(userID int64) ([]map[string]interface{}, error)	Delete(id int64) (int64, error)	Update(id int64, name, description, location, dateTime string) error	GetByID(id int64) (map[string]interface{}, error)	GetAll() ([]map[string]interface{}, error)	Create(name, description, location string, dateTime string, userID int64) (int64, error)type EventRepository interface {// EventRepository defines the interface for event data access operations.}	Exists(email string) (bool, error)	Delete(id int64) error	GetByEmail(email string) (id int64, passwordHash string, err error)	Create(email, passwordHash string) (int64, error)type UserRepository interface {// UserRepository defines the interface for user data access operations.import "database/sql"package repository// This package defines repository interfaces that decouple business logic from data access.
+// DB exposes the underlying gorm.DB reference.
+func (br *BaseRepository) DB() *gorm.DB {
+	return br.db
+}

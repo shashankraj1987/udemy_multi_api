@@ -399,6 +399,36 @@ defer db.CloseDB()  // In main.go
 
 ---
 
+### 16. ORM Migration to GORM
+**Before:** Handwritten SQL scattered across models and repositories using `database/sql` with manual schema creation and ad-hoc queries.
+
+**After:** Unified ORM layer powered by GORM.
+```go
+// db/db.go
+database, err := gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{})
+database.AutoMigrate(&models.User{}, &models.Event{}, &models.Registration{})
+
+// internal/repository/*.go
+func (er *EventRepositoryImpl) Create(event *models.Event) error {
+    return er.DB().Create(event).Error
+}
+```
+
+**Key updates:**
+- Added `gorm.io/gorm` and `gorm.io/driver/sqlite` dependencies in `go.mod`.
+- Models now include GORM tags, timestamps, and a dedicated `Registration` entity (`models/models.go`).
+- Database initialization uses a single `gorm.DB` client with connection pooling, automatic migrations, and clean shutdown semantics (`db/db.go`).
+- Repository implementations leverage expressive ORM APIs instead of manual SQL (`internal/repository/repository.go`, `user.go`, `event.go`, `registration.go`).
+- Route handlers interact with strongly typed model instances (see `routes/event_api.go`) while the router receives the shared ORM client (`routes/routes.go`, `main.go`).
+
+**Benefits:**
+- Safer, composable data access with dramatically less boilerplate SQL.
+- Automatic schema syncing keeps databases consistent across environments.
+- Centralized connection management improves observability and pooling behavior.
+- Repositories become easier to test and maintain thanks to declarative ORM semantics.
+
+---
+
 ### 16. Project Structure
 **After Refactoring:**
 ```
