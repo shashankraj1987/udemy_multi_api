@@ -1,27 +1,49 @@
+// Package routes registers all API routes and their corresponding handlers.
 package routes
 
 import (
+	"database/sql"
+
+	"udemy-multi-api-golang/internal/repository"
 	"udemy-multi-api-golang/middlewares"
+	"udemy-multi-api-golang/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(server *gin.Engine) {
+// RegisterRoutes registers all API routes with the Gin engine.
+func RegisterRoutes(engine *gin.Engine, db *sql.DB, log logger.Logger) {
+	// Initialize repositories
+	userRepo := repository.NewUserRepository(db)
+	eventRepo := repository.NewEventRepository(db)
+	regRepo := repository.NewRegistrationRepository(db)
 
-	authenticated := server.Group("/")
-	authenticated.Use(middlewares.Authenticate)
+	// Public routes (no authentication required)
+	auth := engine.Group("/auth")
+	{
+		auth.POST("/signup", HandleSignUp(userRepo, log))
+		auth.POST("/login", HandleLogin(userRepo, log))
+	}
 
-	// Events related routes
-	authenticated.GET("/events", Get_events)
-	authenticated.POST("/events", CreateEvents)
-	authenticated.GET("/event_by_id/:id", GetEventById)
-	authenticated.PUT("/events/:id", UpdateEvents)
-	authenticated.DELETE("/events/:id", DeleteEventById)
-	authenticated.POST("/events/:id/register", RegisterForEvents)
-	authenticated.DELETE("/events/:id/register", CancelRegisteration)
+	// Protected routes (authentication required)
+	api := engine.Group("/api")
+	api.Use(middlewares.Authenticate)
+	{
+		// Event routes
+		events := api.Group("/events")
+		{
+			events.GET("", HandleGetEvents(eventRepo, log))
+			events.POST("", HandleCreateEvent(eventRepo, log))
+			events.GET("/:id", HandleGetEventByID(eventRepo, log))
+			events.PUT("/:id", HandleUpdateEvent(eventRepo, log))
+			events.DELETE("/:id", HandleDeleteEvent(eventRepo, log))
+		}
 
-	// User related routes
-	server.POST("/signup", sign_up)
-	server.POST("/login", user_Login)
-
+		// Event registration routes
+		registrations := api.Group("/events/:id/registrations")
+		{
+			registrations.POST("", HandleRegisterEvent(eventRepo, regRepo, log))
+			registrations.DELETE("", HandleUnregisterEvent(regRepo, log))
+		}
+	}
 }

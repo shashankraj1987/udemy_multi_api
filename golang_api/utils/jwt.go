@@ -1,55 +1,69 @@
+// Package utils provides utility functions for the application.
 package utils
 
 import (
 	"errors"
 	"time"
+	"udemy-multi-api-golang/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const secretKey = "superSecretKey"
+var jwtConfig *config.JWTConfig
 
-func GenerateToken(email string, userId int64) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email":  email,
-		"userId": userId,
-		"exp":    time.Now().Add(time.Hour * 2).Unix(),
-	})
-
-	return token.SignedString([]byte(secretKey))
+// InitJWT initializes JWT configuration.
+func InitJWT(cfg *config.JWTConfig) {
+	jwtConfig = cfg
 }
 
+// GenerateToken generates a JWT token for a user.
+func GenerateToken(email string, userID int64) (string, error) {
+	if jwtConfig == nil {
+		return "", errors.New("JWT config not initialized")
+	}
+
+	claims := jwt.MapClaims{
+		"email":  email,
+		"userId": userID,
+		"exp":    time.Now().Add(time.Hour * time.Duration(jwtConfig.TokenExpiryHrs)).Unix(),
+		"iat":    time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(jwtConfig.SecretKey))
+}
+
+// VerifyToken verifies a JWT token and returns the user ID.
 func VerifyToken(token string) (int64, error) {
+	if jwtConfig == nil {
+		return 0, errors.New("JWT config not initialized")
+	}
 
-	// Here, we are checking whether the token we got from user, uses the same signing method
-	// that we used to encrypt the original token.
-
-	parsed_token, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		_, ok := token.Method.(*jwt.SigningMethodHMAC)
 		if !ok {
-			return nil, errors.New("Unexpected Signing Method")
+			return nil, errors.New("unexpected signing method")
 		}
-
-		return []byte(secretKey), nil
+		return []byte(jwtConfig.SecretKey), nil
 	})
 
 	if err != nil {
-		return 0, errors.New("Could not Parse token")
+		return 0, errors.New("could not parse token")
 	}
 
-	if !parsed_token.Valid {
-		return 0, errors.New("Invalid Token !")
+	if !parsedToken.Valid {
+		return 0, errors.New("invalid token")
 	}
 
-	claims, ok := parsed_token.Claims.(jwt.MapClaims)
-
+	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, errors.New("Invalid token claims")
+		return 0, errors.New("invalid token claims")
 	}
 
-	// .() <- This is used for Type Checking
+	userID, ok := claims["userId"].(float64)
+	if !ok {
+		return 0, errors.New("invalid user ID in token")
+	}
 
-	// email := claims["email"].(string)
-	userId := int64(claims["userId"].(float64))
-	return userId, nil
+	return int64(userID), nil
 }

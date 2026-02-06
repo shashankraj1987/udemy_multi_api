@@ -1,57 +1,105 @@
+// Package routes contains HTTP handlers for user-related operations.
 package routes
 
 import (
-	"net/http"
+	"udemy-multi-api-golang/internal/repository"
 	"udemy-multi-api-golang/models"
+	"udemy-multi-api-golang/pkg/logger"
+	"udemy-multi-api-golang/pkg/response"
 	"udemy-multi-api-golang/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
-func sign_up(context *gin.Context) {
-	var user models.User
-	err := context.ShouldBindJSON(&user)
-	if err != nil {
-		context.JSON(http.StatusBadRequest,
-			gin.H{"message": "Could not parse the value.", "user": user})
-		return
-	}
+// HandleSignUp handles user account creation.
+// POST /auth/signup
+func HandleSignUp(userRepo repository.UserRepository, log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.SignupRequest
 
-	err = user.Save()
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Error Saving User in the Database", "Error": err.Error()})
-	}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Error("failed to parse signup request", err)
+			response.BadRequest(c, "invalid request payload", err.Error())
+			return
+		}
 
-	context.JSON(http.StatusCreated, gin.H{"Message": "user Created",
-		"event": user})
+		// Check if user already exists
+		exists, err := userRepo.Exists(req.Email)
+		if err != nil {
+			log.Error("failed to check user existence", err)
+			response.InternalServerError(c, "failed to process request", err.Error())
+			return
+		}
+
+		if exists {
+			response.BadRequest(c, "user already exists", "email already registered")
+			return
+		}
+
+		// Hash the password
+		hashedPassword, err := utils.HashPassword(req.Password)
+		if err != nil {
+			log.Error("failed to hash password", err)
+			response.InternalServerError(c, "failed to create user", err.Error())
+			return
+		}
+
+		// Create the user
+		userID, err := userRepo.Create(req.Email, hashedPassword)
+		if err != nil {
+			log.Error("failed to create user", err)
+			response.InternalServerError(c, "failed to create user", err.Error())
+			return
+		}
+
+		response.Created(c, "user created successfully", gin.H{
+			"id":    userID,
+			"email": req.Email,
+		})
+	}
 }
 
-func user_Login(context *gin.Context) {
-	var user models.User
+// HandleLogin handles user authentication.
+// POST /auth/login
+func HandleLogin(userRepo repository.UserRepository, log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.LoginRequest
 
-	err := context.ShouldBindJSON(&user)
+		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Error("failed to parse login request", err)
+			response.BadRequest(c, "invalid request payload", err.Error())
+			return
+		}
 
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Could not Parse request data.", "error": err.Error()})
-		return
+		// Get user from repository
+		userID, passwordHash, err := userRepo.GetByEmail(req.Email)
+		if err != nil {
+			log.Warn("login attempt for non-existent user", req.Email)
+			response.Unauthorized(c, "invalid email or password")
+			return
+		}
+
+		// Check password
+		if !utils.CheckPassword(req.Password, passwordHash) {
+			log.Warn("login attempt with invalid password", req.Email)
+			response.Unauthorized(c, "invalid email or password")
+			return
+		}
+
+		// Generate token
+		token, err := utils.GenerateToken(req.Email, userID)
+		if err != nil {
+			log.Error("failed to generate token", err)
+			response.InternalServerError(c, "failed to authenticate user", err.Error())
+			return
+		}
+
+		response.OK(c, "login successful", gin.H{
+			"token": token,
+			"user": gin.H{
+				"id":    userID,
+				"email": req.Email,
+			},
+		})
 	}
-
-	err = user.ValidateCreds()
-	if err != nil {
-		context.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Could not Login.", "error": err.Error()})
-		return
-	}
-
-	token, err := utils.GenerateToken(user.Email, user.ID)
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not authenticate the user",
-			"error": err.Error()})
-		return
-	}
-
-	context.JSON(http.StatusOK, gin.H{"message": "Login Successful", "token": token})
-
 }

@@ -1,128 +1,182 @@
+// Package routes contains HTTP handlers for event-related operations.
 package routes
 
 import (
-	"net/http"
 	"strconv"
+
+	"udemy-multi-api-golang/internal/repository"
 	"udemy-multi-api-golang/models"
+	"udemy-multi-api-golang/pkg/logger"
+	"udemy-multi-api-golang/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Get_events(context *gin.Context) {
-	events, err := models.GetAll()
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Error fetching Data from the Database", "error": err.Error()})
-		return
-	}
-	context.JSON(http.StatusOK, events)
+// HandleGetEvents retrieves all events.
+// GET /api/events
+func HandleGetEvents(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		events, err := eventRepo.GetAll()
+		if err != nil {
+			log.Error("failed to retrieve events", err)
+			response.InternalServerError(c, "failed to retrieve events", err.Error())
+			return
+		}
 
+		response.OK(c, "events retrieved successfully", events)
+	}
 }
 
-func CreateEvents(context *gin.Context) {
+// HandleCreateEvent creates a new event.
+// POST /api/events
+func HandleCreateEvent(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.CreateEventRequest
 
-	// If Valid, accept the token and move forward.
-	var event models.Event
-	err := context.ShouldBindJSON(&event)
-	if err != nil {
-		context.JSON(http.StatusBadRequest,
-			gin.H{"message": "Could not parse the value.", "event": event})
-		return
+		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Error("failed to parse create event request", err)
+			response.BadRequest(c, "invalid request payload", err.Error())
+			return
+		}
+
+		userID, exists := c.Get("userID")
+		if !exists {
+			response.Unauthorized(c, "user context not found")
+			return
+		}
+
+		eventID, err := eventRepo.Create(
+			req.Name,
+			req.Description,
+			req.Location,
+			req.DateTime.String(),
+			userID.(int64),
+		)
+		if err != nil {
+			log.Error("failed to create event", err)
+			response.InternalServerError(c, "failed to create event", err.Error())
+			return
+		}
+
+		response.Created(c, "event created successfully", gin.H{
+			"id":   eventID,
+			"name": req.Name,
+		})
 	}
-
-	// Set the user Id coming from the Middleware
-
-	event.UserID = context.GetInt64("UId")
-	err = event.Save()
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Error Saving Data in the Database", "Error": err.Error()})
-	}
-
-	context.JSON(http.StatusCreated, gin.H{"Message": "event Created",
-		"event": event})
 }
 
-func GetEventById(context *gin.Context) {
-	event_id, err := strconv.ParseInt(context.Param("id"), 10, 64)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Incorrect ID passed as Integer", "Error": err.Error()})
-		return
-	}
-	event, err := models.GetId(event_id)
-	if err != nil {
-		context.JSON(http.StatusInternalServerError,
-			gin.H{"message": "Unable to get event", "error": err.Error()})
-	}
+// HandleGetEventByID retrieves a specific event by ID.
+// GET /api/events/:id
+func HandleGetEventByID(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		eventID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			response.BadRequest(c, "invalid event ID", err.Error())
+			return
+		}
 
-	context.JSON(http.StatusOK, event)
+		event, err := eventRepo.GetByID(eventID)
+		if err != nil {
+			log.Error("failed to retrieve event", err)
+			response.NotFound(c, "event not found")
+			return
+		}
+
+		response.OK(c, "event retrieved successfully", event)
+	}
 }
 
-func UpdateEvents(context *gin.Context) {
-	event_id, err := strconv.ParseInt(context.Param("id"), 10, 64)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Incorrect ID passed as Integer", "Error": err.Error()})
-		return
+// HandleUpdateEvent updates an existing event.
+// PUT /api/events/:id
+func HandleUpdateEvent(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		eventID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			response.BadRequest(c, "invalid event ID", err.Error())
+			return
+		}
+
+		var req models.UpdateEventRequest
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Error("failed to parse update event request", err)
+			response.BadRequest(c, "invalid request payload", err.Error())
+			return
+		}
+
+		// Retrieve the event to verify ownership
+		event, err := eventRepo.GetByID(eventID)
+		if err != nil {
+			log.Error("failed to retrieve event", err)
+			response.NotFound(c, "event not found")
+			return
+		}
+
+		userID, exists := c.Get("userID")
+		if !exists {
+			response.Unauthorized(c, "user context not found")
+			return
+		}
+
+		// Check if the user owns the event
+		if event["userId"].(int64) != userID.(int64) {
+			response.Forbidden(c, "you do not have permission to update this event")
+			return
+		}
+
+		// Update the event
+		err = eventRepo.Update(eventID, req.Name, req.Description, req.Location, req.DateTime.String())
+		if err != nil {
+			log.Error("failed to update event", err)
+			response.InternalServerError(c, "failed to update event", err.Error())
+			return
+		}
+
+		response.OK(c, "event updated successfully", gin.H{"id": eventID})
 	}
-
-	event, err := models.GetId(event_id)
-
-	if err != nil {
-		context.JSON(http.StatusInternalServerError,
-			gin.H{"message": "Unable to get event", "error": err.Error()})
-	}
-
-	// Check if the event belongs to the owner.
-	if event.UserID != context.GetInt64("UId") {
-		context.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized to update event."})
-		return
-	}
-
-	var updatedEvent models.Event
-
-	err = context.ShouldBind(&updatedEvent)
-	if err != nil {
-		context.JSON(http.StatusBadRequest,
-			gin.H{"message": "Could not parse the value.", "event_id": event_id})
-		return
-	}
-
-	updatedEvent.ID = event_id
-	err = updatedEvent.Update()
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"message": "could not update the event."})
-		return
-	}
-	context.JSON(http.StatusOK, gin.H{"Message": "Event Updated Successfully."})
 }
 
-func DeleteEventById(context *gin.Context) {
-	event_id, err := strconv.ParseInt(context.Param("id"), 10, 64)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid ID", "Error": err.Error()})
-		return
-	}
+// HandleDeleteEvent deletes an event.
+// DELETE /api/events/:id
+func HandleDeleteEvent(eventRepo repository.EventRepository, log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		eventID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			response.BadRequest(c, "invalid event ID", err.Error())
+			return
+		}
 
-	event, err := models.GetId(event_id)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Id Not found in the Database",
-			"error":   err.Error()})
-		return
-	}
+		// Retrieve the event to verify ownership
+		event, err := eventRepo.GetByID(eventID)
+		if err != nil {
+			log.Error("failed to retrieve event for deletion", err)
+			response.NotFound(c, "event not found")
+			return
+		}
 
-	rows, err := event.Delete()
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Unable to Delete ID.",
-			"error":   err.Error()})
-		return
-	}
+		userID, exists := c.Get("userID")
+		if !exists {
+			response.Unauthorized(c, "user context not found")
+			return
+		}
 
-	context.JSON(http.StatusOK, gin.H{
-		"message":       "Event Deleted",
-		"rows effected": rows})
+		// Check if the user owns the event
+		if event["userId"].(int64) != userID.(int64) {
+			response.Forbidden(c, "you do not have permission to delete this event")
+			return
+		}
+
+		// Delete the event
+		rowsAffected, err := eventRepo.Delete(eventID)
+		if err != nil {
+			log.Error("failed to delete event", err)
+			response.InternalServerError(c, "failed to delete event", err.Error())
+			return
+		}
+
+		response.OK(c, "event deleted successfully", gin.H{
+			"id":            eventID,
+			"rows_affected": rowsAffected,
+		})
+	}
 }
